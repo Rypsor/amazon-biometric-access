@@ -2,7 +2,8 @@
 *.tmlanguage.cache
 *.tmPreferences.cache
 *.stTheme.cache
-
+.venv
+.env
 # workspace files are user-specific
 *.sublime-workspace
 
