@@ -58,7 +58,7 @@ This step bundles the Lambda function code into a zip file and uploads it to you
     pynt packagelambda[access_control_handler]
 
     # Deploy the packaged lambda to your S3 bucket
-    pynt deploylambda[access_control_handler] --cfn_params_path=config/biometric-cfn-params.json
+    pynt deploylambda[access_control_handler,cfn_params_path="config/biometric-cfn-params.json"]
     ```
 
 ## Step 4: Deploy the AWS Infrastructure
@@ -68,7 +68,7 @@ This step uses CloudFormation to create all the necessary AWS resources.
 1.  **Run the `createstack` command**:
 
     ```bash
-    pynt createstack --cfn_path=aws-infra/biometric-access-control-cfn.yaml --cfn_params_path=config/biometric-cfn-params.json
+    pynt createstack[cfn_path="aws-infra/biometric-access-control-cfn.yaml",cfn_params_path="config/biometric-cfn-params.json",global_params_path="config/global-params.json"]
     ```
 
 2.  **Wait for Completion**: This process will take a few minutes. You can monitor the status in the AWS CloudFormation console. It is complete when the stack status is `CREATE_COMPLETE`.
