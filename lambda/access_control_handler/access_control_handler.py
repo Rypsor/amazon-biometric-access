@@ -1,6 +1,8 @@
 import boto3
 import json
 import base64
+import os
+from datetime import datetime
 
 def access_control_handler(event, context):
     """
@@ -14,7 +16,12 @@ def access_control_handler(event, context):
     """
     rekognition_client = boto3.client('rekognition')
     dynamodb_resource = boto3.resource('dynamodb')
+    s3_client = boto3.client('s3')
+    sns_client = boto3.client('sns')
+
     table = dynamodb_resource.Table('employees')
+    unrecognized_faces_bucket = os.environ['UNRECOGNIZED_FACES_BUCKET']
+    sns_topic_arn = os.environ['SNS_TOPIC_ARN']
 
     image_bytes = base64.b64decode(event['body'])
 
@@ -24,22 +31,12 @@ def access_control_handler(event, context):
 
         num_faces = len(detect_response['FaceDetails'])
 
-        # Step 2: Handle "Unknown" state (0 or >1 faces)
+        # Step 2: Handle cases with 0 faces
         if num_faces == 0:
             return {
                 'statusCode': 400,
                 'body': json.dumps({
-                    'status': 'Unknown',
-                    'message': 'No face detected in the image.'
-                })
-            }
-
-        if num_faces > 1:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({
-                    'status': 'Unknown',
-                    'message': f'Multiple faces ({num_faces}) detected. Access not permitted for security reasons.'
+                    'message': "No se detectan caras"
                 })
             }
 
@@ -67,7 +64,25 @@ def access_control_handler(event, context):
                     })
                 }
 
-        # If no match was found in the collection
+        # If no match was found in the collection, upload image to S3 and send SNS alert
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H-%M-%SZ')
+        s3_key = f"unrecognized-face-{timestamp}.jpg"
+
+        s3_client.put_object(
+            Bucket=unrecognized_faces_bucket,
+            Key=s3_key,
+            Body=image_bytes,
+            ContentType='image/jpeg'
+        )
+
+        s3_url = f"https://{unrecognized_faces_bucket}.s3.amazonaws.com/{s3_key}"
+
+        sns_client.publish(
+            TopicArn=sns_topic_arn,
+            Subject="ALERTA: Acceso Biométrico",
+            Message=f"Se detectó un desconocido. Se niega su acceso.\n\nFoto: {s3_url}"
+        )
+
         return {
             'statusCode': 401,
             'body': json.dumps({
