@@ -88,11 +88,6 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
-  S3Bucket:
-    Type: "AWS::S3::Bucket"
-    Properties:
-      BucketName: !Ref S3BucketNameParameter
-
   LambdaExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
