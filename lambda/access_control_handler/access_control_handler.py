@@ -24,20 +24,12 @@ def access_control_handler(event, context):
 
         num_faces = len(detect_response['FaceDetails'])
 
-        # Step 2: Handle cases with 0 or more than 1 face
+        # Step 2: Handle cases with 0 faces
         if num_faces == 0:
             return {
                 'statusCode': 400,
                 'body': json.dumps({
-                    'message': "No se detectó ninguna cara"
-                })
-            }
-
-        if num_faces > 1:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({
-                    'message': "Se detectó más de una cara"
+                    'message': "No se detectan caras"
                 })
             }
 
