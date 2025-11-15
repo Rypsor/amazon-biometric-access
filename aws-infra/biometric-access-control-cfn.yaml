@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: CloudFormation template for the Biometric Access Control System MVP.
+
+Parameters:
+  S3BucketNameParameter:
+    Type: String
+    Description: "Name of the S3 bucket for storage of employee photos."
+  AccessControlLambdaSourceS3KeyParameter:
+    Type: String
+    Description: "S3 key for the access control lambda function zip file."
+
+Resources:
+  AccessControlLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "access_control_handler"
+      Description: "Handles access control by searching for a face in a Rekognition collection."
+      Handler: "access_control_handler.access_control_handler"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketNameParameter
+        S3Key: !Ref AccessControlLambdaSourceS3KeyParameter
+      Runtime: python3.9
+      Timeout: 30
+
+  AccessControlApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: "AccessControlApi"
+      Description: "API for the Biometric Access Control System."
+
+  AccessResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AccessControlApi
+      ParentId: !GetAtt AccessControlApi.RootResourceId
+      PathPart: "access"
+
+  AccessMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AccessControlApi
+      ResourceId: !Ref AccessResource
+      HttpMethod: "POST"
+      AuthorizationType: "NONE"
+      Integration:
+        Type: "AWS_PROXY"
+        IntegrationHttpMethod: "POST"
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AccessControlLambda.Arn}/invocations"
+
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: AccessMethod
+    Properties:
+      RestApiId: !Ref AccessControlApi
+
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      StageName: "dev"
+      RestApiId: !Ref AccessControlApi
+      DeploymentId: !Ref ApiGatewayDeployment
+
+  LambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt AccessControlLambda.Arn
+      Action: "lambda:InvokeFunction"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AccessControlApi}/*/*/*"
+
+  RekognitionCollection:
+    Type: "AWS::Rekognition::Collection"
+    Properties:
+      CollectionId: "employees"
+
+  EmployeesDynamoDBTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      TableName: "employees"
+      KeySchema:
+        - KeyType: "HASH"
+          AttributeName: "FaceId"
+      AttributeDefinitions:
+        - AttributeName: "FaceId"
+          AttributeType: "S"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  LambdaExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: "LambdaAccessControlPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "rekognition:SearchFacesByImage"
+                  - "rekognition:IndexFaces"
+                Resource: !GetAtt RekognitionCollection.Arn
+              - Effect: "Allow"
+                Action:
+                  - "rekognition:DetectFaces"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:GetItem"
+                  - "dynamodb:PutItem"
+                Resource: !GetAtt EmployeesDynamoDBTable.Arn
+              - Effect: "Allow"
+                Action:
+                  - "s3:GetObject"
+                Resource: !Sub "arn:aws:s3:::${S3BucketNameParameter}/*"
