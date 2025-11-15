@@ -49,14 +49,9 @@ def enroll_employees(bucket_name, collection_id, table_name):
         else:
             print(f"Could not enroll {employee_id}. No faces detected.")
 
-import sys
-
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print("Usage: python enroll.py <s3-bucket-name>")
-        sys.exit(1)
-
-    S3_BUCKET = sys.argv[1]
+    # Replace with your actual bucket, collection, and table names
+    S3_BUCKET = "your-s3-bucket-name"
     REKOGNITION_COLLECTION = "employees"
     DYNAMODB_TABLE = "employees"
 
