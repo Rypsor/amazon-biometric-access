@@ -24,22 +24,12 @@ def access_control_handler(event, context):
 
         num_faces = len(detect_response['FaceDetails'])
 
-        # Step 2: Handle "Unknown" state (0 or >1 faces)
+        # Step 2: Handle cases with 0 faces
         if num_faces == 0:
             return {
                 'statusCode': 400,
                 'body': json.dumps({
-                    'status': 'Unknown',
-                    'message': 'No face detected in the image.'
-                })
-            }
-
-        if num_faces > 1:
-            return {
-                'statusCode': 400,
-                'body': json.dumps({
-                    'status': 'Unknown',
-                    'message': f'Multiple faces ({num_faces}) detected. Access not permitted for security reasons.'
+                    'message': "No se detectan caras"
                 })
             }
 
