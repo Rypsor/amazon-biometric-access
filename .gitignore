@@ -31,3 +31,4 @@ venv/
 
 #IDE files
 .idea/
+__pycache__/
