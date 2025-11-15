@@ -49,7 +49,7 @@ This step bundles the Lambda function code into a zip file and uploads it to you
 
     ```bash
     # Install dependencies (only needs to be done once)
-    pip install pynt boto3
+    pip install pynt boto3 opencv-python
 
     # Clean the build directory
     pynt clean
@@ -88,7 +88,7 @@ Now that the infrastructure is ready, you need to populate the Rekognition colle
 
 ## Step 6: Test the System
 
-Finally, you can test the access control system with a test image.
+Finally, you can test the access control system in real-time using your webcam.
 
 1.  **Get the API Gateway URL**:
     *   Navigate to the **API Gateway** service in the AWS Console.
@@ -98,13 +98,16 @@ Finally, you can test the access control system with a test image.
     *   Append `/access` to the end of this URL. The final URL should look like: `https://xxxxxxxxx.execute-api.us-east-1.amazonaws.com/dev/access`.
 
 2.  **Run the Camera Simulator**:
-    *   Use the following command, replacing the placeholders with your actual API Gateway URL and the path to your test image:
+    *   Use the following command, replacing the placeholder with your actual API Gateway URL:
 
     ```bash
-    python scripts/camera_simulator.py "your_api_gateway_url/access" "path/to/your/test_image.jpg"
+    python scripts/camera_simulator.py "your_api_gateway_url/access"
     ```
+    *   A window will open showing your webcam feed with a countdown. Look at the camera!
+    *   After 3 seconds, it will automatically take a photo and send it for verification.
 
-    *   **If you use a photo of an enrolled employee**, you should see a response with `Status Code: 200` and a message like `"Access Granted for John Doe"`.
-    *   **If you use a photo of an unknown person**, you should see a response with `Status Code: 401` and the message `"Access Denied: Face not recognized."`.
+3.  **Check the Results**:
+    *   **If your face is one of the enrolled employees**, you should see a response in your terminal with `Status Code: 200` and a message like `"Access Granted for John Doe"`.
+    *   **If your face is not recognized**, you should see a response with `Status Code: 401` and the message `"Access Denied: Face not recognized."`.
 
 Congratulations! You have successfully deployed and tested the Biometric Access Control MVP.
