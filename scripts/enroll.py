@@ -18,9 +18,16 @@ def enroll_employees(bucket_name, collection_id, table_name):
     bucket = s3_resource.Bucket(bucket_name)
 
     for obj in bucket.objects.all():
+        if not obj.key.lower().endswith(('.png', '.jpg', '.jpeg')):
+            print(f"Skipping non-image file: {obj.key}")
+            continue
+
         employee_id, _ = os.path.splitext(obj.key)
 
-        print(f"Enrolling employee: {employee_id}")
+        # Clean up employee_id for Rekognition constraints
+        employee_id_rekognition = employee_id.replace('/', '_')
+
+        print(f"Enrolling employee: {employee_id_rekognition}")
 
         response = rekognition_client.index_faces(
             CollectionId=collection_id,
