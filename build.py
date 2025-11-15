@@ -65,14 +65,15 @@ def packagelambda(* functions):
     os.chdir("build")
 
     if(len(functions) == 0):
-        functions = ("framefetcher", "imageprocessor")
+        functions = ("framefetcher", "imageprocessor", "access_control_handler")
 
     for function in functions:
         print('Packaging "%s" lambda function in directory' % function)
         zipf = zipfile.ZipFile("%s.zip" % function, "w", zipfile.ZIP_DEFLATED)
         
         write_dir_to_zip("../lambda/%s/" % function, zipf)
-        zipf.write("../config/%s-params.json" % function, "%s-params.json" % function)
+        if os.path.exists(f"../config/{function}-params.json"):
+            zipf.write(f"../config/{function}-params.json", f"{function}-params.json")
 
         zipf.close()
 
@@ -87,7 +88,7 @@ def updatelambda(*functions):
     lambda_client = boto3.client('lambda')
 
     if(len(functions) == 0):
-        functions = ("framefetcher", "imageprocessor")
+        functions = ("framefetcher", "imageprocessor", "access_control_handler")
 
     for function in functions:
         with open('build/%s.zip' % (function), 'rb') as zipf:
@@ -104,15 +105,16 @@ def deploylambda(* functions, **kwargs):
     cfn_params_path = kwargs.get("cfn_params_path", "config/cfn-params.json")
 
     if(len(functions) == 0):
-        functions = ("framefetcher", "imageprocessor")
+        functions = ("framefetcher", "imageprocessor", "access_control_handler")
 
     region_name = boto3.session.Session().region_name
     s3_keys = {}
 
     cfn_params_dict = read_json(cfn_params_path)
-    src_s3_bucket_name = cfn_params_dict["SourceS3BucketParameter"]
-    s3_keys["framefetcher"] = cfn_params_dict["FrameFetcherSourceS3KeyParameter"]
-    s3_keys["imageprocessor"] = cfn_params_dict["ImageProcessorSourceS3KeyParameter"]
+    src_s3_bucket_name = cfn_params_dict.get("SourceS3BucketParameter") or cfn_params_dict.get("S3BucketNameParameter")
+    s3_keys["framefetcher"] = cfn_params_dict.get("FrameFetcherSourceS3KeyParameter")
+    s3_keys["imageprocessor"] = cfn_params_dict.get("ImageProcessorSourceS3KeyParameter")
+    s3_keys["access_control_handler"] = cfn_params_dict.get("AccessControlLambdaSourceS3KeyParameter")
 
     s3_client = boto3.client("s3")
     
