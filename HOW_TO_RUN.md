@@ -66,12 +66,16 @@ This step bundles the Lambda function code into a zip file and uploads it to you
 This step uses CloudFormation to create all the necessary AWS resources.
 
 1.  **Run the `createstack` command**:
+    *   **If this is the first time you are deploying**, run the `createstack` command:
+        ```bash
+        pynt createstack[cfn_path="aws-infra/biometric-access-control-cfn.yaml",cfn_params_path="config/biometric-cfn-params.json",global_params_path="config/global-params.json"]
+        ```
+    *   **If you have already deployed the stack and are updating it**, run the `updatestack` command instead:
+        ```bash
+        pynt updatestack[cfn_path="aws-infra/biometric-access-control-cfn.yaml",cfn_params_path="config/biometric-cfn-params.json",global_params_path="config/global-params.json"]
+        ```
 
-    ```bash
-    pynt createstack[cfn_path="aws-infra/biometric-access-control-cfn.yaml",cfn_params_path="config/biometric-cfn-params.json",global_params_path="config/global-params.json"]
-    ```
-
-2.  **Wait for Completion**: This process will take a few minutes. You can monitor the status in the AWS CloudFormation console. It is complete when the stack status is `CREATE_COMPLETE`.
+2.  **Wait for Completion**: This process will take a few minutes. You can monitor the status in the AWS CloudFormation console. It is complete when the stack status is `CREATE_COMPLETE` or `UPDATE_COMPLETE`.
 
 ## Step 5: Enroll the Employees
 
@@ -106,8 +110,22 @@ Finally, you can test the access control system in real-time using your webcam.
     *   A window will open showing your webcam feed with a countdown. Look at the camera!
     *   After 3 seconds, it will automatically take a photo and send it for verification.
 
-3.  **Check the Results**:
-    *   **If your face is one of the enrolled employees**, you should see a response in your terminal with `Status Code: 200` and a message like `"Access Granted for John Doe"`.
-    *   **If your face is not recognized**, you should see a response with `Status Code: 401` and the message `"Access Denied: Face not recognized."`.
+3.  **Check the Results**: The terminal will show one of three outcomes:
+    *   **Access Granted**: If exactly one face was detected and it belongs to a registered employee.
+        ```
+        Status Code: 200
+        Response: {'status': 'Access Granted', 'message': 'Welcome, John Doe...'}
+        ```
+    *   **Access Denied**: If exactly one face was detected, but it was not found in the employee database.
+        ```
+        Status Code: 401
+        Response: {'status': 'Access Denied', 'message': 'Face not recognized.'}
+        ```
+    *   **Unknown**: If zero faces or more than one face were detected in the photo.
+        ```
+        Status Code: 400
+        Response: {'status': 'Unknown', 'message': 'No face detected...'}
+        // or {'status': 'Unknown', 'message': 'Multiple faces detected...'}
+        ```
 
 Congratulations! You have successfully deployed and tested the Biometric Access Control MVP.

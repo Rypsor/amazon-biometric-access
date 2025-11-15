@@ -119,6 +119,10 @@ Resources:
                 Resource: !GetAtt RekognitionCollection.Arn
               - Effect: "Allow"
                 Action:
+                  - "rekognition:DetectFaces"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
                   - "dynamodb:GetItem"
                   - "dynamodb:PutItem"
                 Resource: !GetAtt EmployeesDynamoDBTable.Arn
