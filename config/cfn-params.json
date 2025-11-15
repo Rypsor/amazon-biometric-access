@@ -1,5 +1,5 @@
 {
-    "SourceS3BucketParameter" : "<NO-DEFAULT>",
+    "SourceS3BucketParameter" : "biometric-access-2025",
     "ImageProcessorSourceS3KeyParameter" : "src/lambda_imageprocessor.zip",
     "FrameFetcherSourceS3KeyParameter" : "src/lambda_framefetcher.zip",
     "FrameS3BucketNameParameter" : "<NO-DEFAULT>",
