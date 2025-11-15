@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 samuel
+=======
+
+>>>>>>> Stashed changes
 Create a Serverless Pipeline for Video Frame Analysis and Alerting
 ========
 
