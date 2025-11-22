@@ -3,6 +3,7 @@ import boto3
 import base64
 import os
 import uuid
+import re
 
 # Initialize clients
 rekognition = boto3.client('rekognition')
@@ -35,6 +36,21 @@ def register_employee(event, context):
                 'body': json.dumps({'message': 'Missing required fields'})
             }
 
+        # Sanitize Cedula for ExternalImageId
+        # Rekognition allows: [a-zA-Z0-9_.\-:]
+        # Remove any invalid characters from cedula
+        external_image_id = re.sub(r'[^a-zA-Z0-9_.\-:]', '', cedula)
+
+        if not external_image_id:
+             return {
+                'statusCode': 400,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                },
+                'body': json.dumps({'message': 'Invalid characters in ID (Cedula)'})
+            }
+
         # Decode image
         try:
             image_bytes = base64.b64decode(image_base64)
@@ -54,7 +70,7 @@ def register_employee(event, context):
             rek_response = rekognition.index_faces(
                 CollectionId=COLLECTION_ID,
                 Image={'Bytes': image_bytes},
-                ExternalImageId=cedula, # Using Cedula as ExternalImageId can be useful
+                ExternalImageId=external_image_id,
                 DetectionAttributes=['ALL'],
                 MaxFaces=1,
                 QualityFilter="AUTO"
