@@ -115,6 +115,7 @@ def deploylambda(* functions, **kwargs):
     s3_keys["framefetcher"] = cfn_params_dict.get("FrameFetcherSourceS3KeyParameter")
     s3_keys["imageprocessor"] = cfn_params_dict.get("ImageProcessorSourceS3KeyParameter")
     s3_keys["access_control_handler"] = cfn_params_dict.get("AccessControlLambdaSourceS3KeyParameter")
+    s3_keys["register_employee"] = cfn_params_dict.get("RegisterEmployeeLambdaSourceS3KeyParameter")
 
     s3_client = boto3.client("s3")
     
