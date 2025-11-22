@@ -1,6 +1,5 @@
-
-
-
-
-
 opencv-python
+streamlit
+python-dotenv
+requests
+boto3
