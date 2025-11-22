@@ -67,6 +67,23 @@ Resources:
           EMPLOYEES_TABLE: !Ref EmployeesDynamoDBTable
           REKOGNITION_COLLECTION_ID: "employees"
 
+  RegisterEmployeeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "register_employee"
+      Description: "Registers a new employee face in Rekognition and DynamoDB."
+      Handler: "register_employee.register_employee"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketNameParameter
+        S3Key: !Ref RegisterEmployeeLambdaSourceS3KeyParameter
+      Runtime: python3.9
+      Timeout: 30
+      Environment:
+        Variables:
+          EMPLOYEES_TABLE: !Ref EmployeesDynamoDBTable
+          REKOGNITION_COLLECTION_ID: "employees"
+
   AccessControlApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
