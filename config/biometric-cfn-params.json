@@ -1,0 +1,4 @@
+{
+    "S3BucketNameParameter": "biometric-access-2025",
+    "AccessControlLambdaSourceS3KeyParameter": "src/access_control_handler.zip"
+}
