@@ -77,11 +77,12 @@ def access_control_handler(event, context):
 
         s3_url = f"https://{unrecognized_faces_bucket}.s3.amazonaws.com/{s3_key}"
 
-        sns_client.publish(
+        response = sns_client.publish(
             TopicArn=sns_topic_arn,
             Subject="ALERTA: Acceso Biométrico",
             Message=f"Se detectó un desconocido. Se niega su acceso.\n\nFoto: {s3_url}"
         )
+        print(f"SNS Alert sent to topic: {sns_topic_arn}, MessageId: {response.get('MessageId')}")
 
         return {
             'statusCode': 401,

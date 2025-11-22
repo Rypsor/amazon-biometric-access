@@ -65,7 +65,7 @@ def packagelambda(* functions):
     os.chdir("build")
 
     if(len(functions) == 0):
-        functions = ("framefetcher", "imageprocessor", "access_control_handler")
+        functions = ("access_control_handler",)
 
     for function in functions:
         print('Packaging "%s" lambda function in directory' % function)
@@ -88,7 +88,7 @@ def updatelambda(*functions):
     lambda_client = boto3.client('lambda')
 
     if(len(functions) == 0):
-        functions = ("framefetcher", "imageprocessor", "access_control_handler")
+        functions = ("access_control_handler",)
 
     for function in functions:
         with open('build/%s.zip' % (function), 'rb') as zipf:
@@ -102,10 +102,10 @@ def updatelambda(*functions):
 def deploylambda(* functions, **kwargs):
     '''Upload lambda functions .zip file to S3 for download by CloudFormation stack during creation.'''
     
-    cfn_params_path = kwargs.get("cfn_params_path", "config/cfn-params.json")
+    cfn_params_path = kwargs.get("cfn_params_path", "config/biometric-params.json")
 
     if(len(functions) == 0):
-        functions = ("framefetcher", "imageprocessor", "access_control_handler")
+        functions = ("access_control_handler",)
 
     region_name = boto3.session.Session().region_name
     s3_keys = {}
@@ -150,9 +150,9 @@ def deploylambda(* functions, **kwargs):
 def createstack(**kwargs):
     '''Create the Amazon Rekognition Video Analyzer stack using CloudFormation.'''
 
-    cfn_path = kwargs.get("cfn_path", "aws-infra/aws-infra-cfn.yaml") 
+    cfn_path = kwargs.get("cfn_path", "aws-infra/biometric-access-control-cfn.yaml")
     global_params_path = kwargs.get("global_params_path", "config/global-params.json") 
-    cfn_params_path = kwargs.get("cfn_params_path", "config/cfn-params.json")
+    cfn_params_path = kwargs.get("cfn_params_path", "config/biometric-params.json")
 
     global_params_dict = read_json(global_params_path)
     stack_name = global_params_dict["StackName"]
@@ -190,9 +190,9 @@ def createstack(**kwargs):
 @task()
 def updatestack(**kwargs):
     '''Update the Amazon Rekognition Video Analyzer CloudFormation stack.'''
-    cfn_path = kwargs.get("cfn_path", "aws-infra/aws-infra-cfn.yaml") 
+    cfn_path = kwargs.get("cfn_path", "aws-infra/biometric-access-control-cfn.yaml")
     global_params_path = kwargs.get("global_params_path", "config/global-params.json") 
-    cfn_params_path = kwargs.get("cfn_params_path", "config/cfn-params.json")
+    cfn_params_path = kwargs.get("cfn_params_path", "config/biometric-params.json")
 
     global_params_dict = read_json(global_params_path)
     stack_name = global_params_dict["StackName"]
