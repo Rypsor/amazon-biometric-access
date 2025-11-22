@@ -75,12 +75,17 @@ def access_control_handler(event, context):
             ContentType='image/jpeg'
         )
 
-        s3_url = f"https://{unrecognized_faces_bucket}.s3.amazonaws.com/{s3_key}"
+        # Generate a presigned URL for the uploaded image
+        s3_url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': unrecognized_faces_bucket, 'Key': s3_key},
+            ExpiresIn=3600  # URL expires in 1 hour
+        )
 
         response = sns_client.publish(
             TopicArn=sns_topic_arn,
             Subject="ALERTA: Acceso Biométrico",
-            Message=f"Se detectó un desconocido. Se niega su acceso.\n\nFoto: {s3_url}"
+            Message=f"Se detectó un desconocido. Se niega su acceso.\n\nFoto (válida por 1 hora): {s3_url}"
         )
         print(f"SNS Alert sent to topic: {sns_topic_arn}, MessageId: {response.get('MessageId')}")
 

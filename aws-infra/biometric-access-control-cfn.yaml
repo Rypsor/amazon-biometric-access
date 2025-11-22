@@ -27,7 +27,7 @@ Resources:
       Subscription:
         - Endpoint: "samuelrb34@gmail.com"
           Protocol: "email"
-        - Endpoint: "marestrepoa@unal.edu.co"
+        - Endpoint: "alerestrepo03@gmail.com"
           Protocol: "email"
 
   AccessControlLambda:
@@ -157,6 +157,7 @@ Resources:
               - Effect: "Allow"
                 Action:
                   - "s3:PutObject"
+                  - "s3:GetObject"
                 Resource: !Sub "arn:aws:s3:::${UnrecognizedFacesS3Bucket}/*"
               - Effect: "Allow"
                 Action:
