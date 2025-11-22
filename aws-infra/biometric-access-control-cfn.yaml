@@ -13,7 +13,6 @@ Resources:
   UnrecognizedFacesS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "unrecognized-faces-${AWS::AccountId}"
       LifecycleConfiguration:
         Rules:
           - Id: "AutoDeleteRule"
