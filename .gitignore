@@ -4,9 +4,9 @@
 *.stTheme.cache
 .venv
 .env
-# workspace files are user-specific
+user-specific
 *.sublime-workspace
-
+texto.txt
 # project files should be checked into the repository, unless a significant
 # proportion of contributors will probably not be using SublimeText
 # *.sublime-project
