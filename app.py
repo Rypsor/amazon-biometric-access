@@ -2,6 +2,8 @@ import streamlit as st
 import requests
 import base64
 import os
+import boto3
+import json
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -80,6 +82,16 @@ def register_employee(api_url, image_bytes, first_name, last_name, cedula, city)
         st.error(f"An error occurred: {str(e)}")
         return None
 
+def get_dashboard_image(metric_widget_json):
+    """Fetches a metric widget image from CloudWatch."""
+    try:
+        cw = boto3.client('cloudwatch')
+        response = cw.get_metric_widget_image(MetricWidget=metric_widget_json)
+        return response['MetricWidgetImage']
+    except Exception as e:
+        st.error(f"Failed to load dashboard: {str(e)}")
+        return None
+
 def main():
     st.title("🔒 Biometric Access Control")
     st.markdown("### Identity Verification System")
@@ -100,8 +112,62 @@ def main():
 
         st.divider()
         st.header("Mode")
-        mode = st.radio("Select Action:", ["Verify Access", "Register Employee"])
+        mode = st.radio("Select Action:", ["Verify Access", "Register Employee", "Dashboard"])
 
+    # --- DASHBOARD MODE (No API URL needed technically, but keeps flow consistent) ---
+    if mode == "Dashboard":
+        st.subheader("System Monitoring")
+        st.info("Metrics are pulled directly from CloudWatch.")
+
+        # Define Widgets
+        # Widget 1: Access Attempts
+        widget_access = {
+            "view": "timeSeries",
+            "stacked": False,
+            "metrics": [
+                [ "BiometricAccessControl", "AccessAttempts", "Status", "Granted", { "stat": "Sum", "period": 3600, "label": "Granted" } ],
+                [ "...", "Denied", { "stat": "Sum", "period": 3600, "label": "Denied" } ]
+            ],
+            "width": 600,
+            "height": 400,
+            "start": "-PT24H",
+            "end": "P0D",
+            "title": "Access Attempts (Last 24 Hours)"
+        }
+
+        # Widget 2: Registrations
+        widget_registrations = {
+            "view": "singleValue",
+            "metrics": [
+                [ "BiometricAccessControl", "EmployeeRegistrations", { "stat": "Sum", "period": 86400, "label": "Total Registrations" } ]
+            ],
+            "width": 600,
+            "height": 200,
+            "start": "-P7D",
+            "end": "P0D",
+            "title": "Registrations (Last 7 Days)"
+        }
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("#### Access Attempts")
+            img_access = get_dashboard_image(json.dumps(widget_access))
+            if img_access:
+                st.image(img_access)
+
+        with col2:
+            st.markdown("#### Employee Registrations")
+            img_reg = get_dashboard_image(json.dumps(widget_registrations))
+            if img_reg:
+                st.image(img_reg)
+
+        if st.button("Refresh Metrics"):
+            st.rerun()
+
+        return
+
+    # Validation for other modes that need API URL
     if not api_url:
         st.info("Please configure the API Gateway URL in the sidebar to proceed.")
         return
@@ -142,7 +208,6 @@ def main():
     elif mode == "Register Employee":
         st.subheader("New Employee Registration")
 
-        # REMOVED st.form wrapper to allow easier state management and interaction
         col1, col2 = st.columns(2)
         with col1:
             first_name = st.text_input("First Name")
