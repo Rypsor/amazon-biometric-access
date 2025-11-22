@@ -163,7 +163,11 @@ def main():
                 st.image(img_reg)
 
         if st.button("Refresh Metrics"):
-            st.rerun()
+            # Handle compatibility for older Streamlit versions on Python 3.7
+            if hasattr(st, 'rerun'):
+                st.rerun()
+            else:
+                st.experimental_rerun()
 
         return
 
@@ -208,6 +212,7 @@ def main():
     elif mode == "Register Employee":
         st.subheader("New Employee Registration")
 
+        # REMOVED st.form wrapper to allow easier state management and interaction
         col1, col2 = st.columns(2)
         with col1:
             first_name = st.text_input("First Name")
