@@ -2,6 +2,7 @@ import boto3
 import json
 import base64
 import os
+import uuid
 from datetime import datetime
 
 def access_control_handler(event, context):
@@ -23,6 +24,7 @@ def access_control_handler(event, context):
         table = dynamodb_resource.Table('employees')
         unrecognized_faces_bucket = os.environ['UNRECOGNIZED_FACES_BUCKET']
         sns_topic_arn = os.environ['SNS_TOPIC_ARN']
+        access_logs_table_name = os.environ.get('ACCESS_LOGS_TABLE')
 
         image_bytes = base64.b64decode(event['body'])
 
@@ -66,12 +68,21 @@ def access_control_handler(event, context):
             if 'Item' in dynamodb_response:
                 employee = dynamodb_response['Item']
 
-                # Use correct field names based on registration lambda (FirstName, LastName)
-                # Fallback to legacy names if needed
                 first_name = employee.get('FirstName', employee.get('full_name', 'Unknown'))
                 last_name = employee.get('LastName', '')
                 full_name = f"{first_name} {last_name}".strip()
                 employee_id = employee.get('Cedula', employee.get('employee_id', 'N/A'))
+
+                # Log Access Granted
+                if access_logs_table_name:
+                    log_table = dynamodb_resource.Table(access_logs_table_name)
+                    log_table.put_item(Item={
+                        'LogId': str(uuid.uuid4()),
+                        'Timestamp': datetime.utcnow().isoformat(),
+                        'EmployeeId': employee_id,
+                        'EmployeeName': full_name,
+                        'Status': 'Access Granted'
+                    })
 
                 return {
                     'statusCode': 200,
@@ -105,6 +116,17 @@ def access_control_handler(event, context):
             Message=f"Se detectó un desconocido. Se niega su acceso.\n\nFoto (válida por 1 hora): {s3_url}"
         )
         print(f"SNS Alert sent to topic: {sns_topic_arn}, MessageId: {response.get('MessageId')}")
+
+        # Log Access Denied
+        if access_logs_table_name:
+            log_table = dynamodb_resource.Table(access_logs_table_name)
+            log_table.put_item(Item={
+                'LogId': str(uuid.uuid4()),
+                'Timestamp': datetime.utcnow().isoformat(),
+                'EmployeeId': 'Unknown',
+                'EmployeeName': 'Unknown',
+                'Status': 'Access Denied'
+            })
 
         return {
             'statusCode': 403,

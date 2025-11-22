@@ -48,6 +48,24 @@ Resources:
         Variables:
           SNS_TOPIC_ARN: !Ref AlertsTopic
           UNRECOGNIZED_FACES_BUCKET: !Ref UnrecognizedFacesS3Bucket
+          ACCESS_LOGS_TABLE: !Ref AccessLogsDynamoDBTable
+
+  RegisterEmployeeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "register_employee"
+      Description: "Registers a new employee face in Rekognition and DynamoDB."
+      Handler: "register_employee.register_employee"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketNameParameter
+        S3Key: !Ref RegisterEmployeeLambdaSourceS3KeyParameter
+      Runtime: python3.9
+      Timeout: 30
+      Environment:
+        Variables:
+          EMPLOYEES_TABLE: !Ref EmployeesDynamoDBTable
+          REKOGNITION_COLLECTION_ID: "employees"
 
   RegisterEmployeeLambda:
     Type: AWS::Lambda::Function
@@ -160,6 +178,24 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
+  AccessLogsDynamoDBTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      TableName: "AccessLogs"
+      KeySchema:
+        - KeyType: "HASH"
+          AttributeName: "LogId"
+        - KeyType: "RANGE"
+          AttributeName: "Timestamp"
+      AttributeDefinitions:
+        - AttributeName: "LogId"
+          AttributeType: "S"
+        - AttributeName: "Timestamp"
+          AttributeType: "S"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
   LambdaExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -197,7 +233,9 @@ Resources:
                 Action:
                   - "dynamodb:GetItem"
                   - "dynamodb:PutItem"
-                Resource: !GetAtt EmployeesDynamoDBTable.Arn
+                Resource:
+                  - !GetAtt EmployeesDynamoDBTable.Arn
+                  - !GetAtt AccessLogsDynamoDBTable.Arn
               - Effect: "Allow"
                 Action:
                   - "s3:GetObject"
