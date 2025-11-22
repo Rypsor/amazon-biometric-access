@@ -8,9 +8,6 @@ Parameters:
   AccessControlLambdaSourceS3KeyParameter:
     Type: String
     Description: "S3 key for the access control lambda function zip file."
-  SnsTopicArnParameter:
-    Type: String
-    Description: "ARN of the SNS topic for unrecognized access alerts."
 
 Resources:
   UnrecognizedFacesS3Bucket:
@@ -22,6 +19,16 @@ Resources:
           - Id: "AutoDeleteRule"
             Status: "Enabled"
             ExpirationInDays: 7
+
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "Biometric Access Alerts"
+      Subscription:
+        - Endpoint: "samuelrb34@gmail.com"
+          Protocol: "email"
+        - Endpoint: "alerestrepo03@gmail.com"
+          Protocol: "email"
 
   AccessControlLambda:
     Type: AWS::Lambda::Function
@@ -35,6 +42,10 @@ Resources:
         S3Key: !Ref AccessControlLambdaSourceS3KeyParameter
       Runtime: python3.9
       Timeout: 30
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref AlertsTopic
+          UNRECOGNIZED_FACES_BUCKET: !Ref UnrecognizedFacesS3Bucket
 
   AccessControlApi:
     Type: AWS::ApiGateway::RestApi
@@ -146,8 +157,9 @@ Resources:
               - Effect: "Allow"
                 Action:
                   - "s3:PutObject"
+                  - "s3:GetObject"
                 Resource: !Sub "arn:aws:s3:::${UnrecognizedFacesS3Bucket}/*"
               - Effect: "Allow"
                 Action:
                   - "sns:Publish"
-                Resource: !Ref SnsTopicArnParameter
+                Resource: !Ref AlertsTopic
