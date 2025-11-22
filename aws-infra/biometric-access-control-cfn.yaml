@@ -8,12 +8,14 @@ Parameters:
   AccessControlLambdaSourceS3KeyParameter:
     Type: String
     Description: "S3 key for the access control lambda function zip file."
+  RegisterEmployeeLambdaSourceS3KeyParameter:
+    Type: String
+    Description: "S3 key for the register employee lambda function zip file."
 
 Resources:
   UnrecognizedFacesS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub "unrecognized-faces-${AWS::AccountId}"
       LifecycleConfiguration:
         Rules:
           - Id: "AutoDeleteRule"
@@ -46,6 +48,24 @@ Resources:
         Variables:
           SNS_TOPIC_ARN: !Ref AlertsTopic
           UNRECOGNIZED_FACES_BUCKET: !Ref UnrecognizedFacesS3Bucket
+          ACCESS_LOGS_TABLE: !Ref AccessLogsDynamoDBTable
+
+  RegisterEmployeeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "register_employee"
+      Description: "Registers a new employee face in Rekognition and DynamoDB."
+      Handler: "register_employee.register_employee"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketNameParameter
+        S3Key: !Ref RegisterEmployeeLambdaSourceS3KeyParameter
+      Runtime: python3.9
+      Timeout: 30
+      Environment:
+        Variables:
+          EMPLOYEES_TABLE: !Ref EmployeesDynamoDBTable
+          REKOGNITION_COLLECTION_ID: "employees"
 
   AccessControlApi:
     Type: AWS::ApiGateway::RestApi
@@ -72,9 +92,30 @@ Resources:
         IntegrationHttpMethod: "POST"
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AccessControlLambda.Arn}/invocations"
 
+  RegisterResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AccessControlApi
+      ParentId: !GetAtt AccessControlApi.RootResourceId
+      PathPart: "register"
+
+  RegisterMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AccessControlApi
+      ResourceId: !Ref RegisterResource
+      HttpMethod: "POST"
+      AuthorizationType: "NONE"
+      Integration:
+        Type: "AWS_PROXY"
+        IntegrationHttpMethod: "POST"
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RegisterEmployeeLambda.Arn}/invocations"
+
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
-    DependsOn: AccessMethod
+    DependsOn:
+      - AccessMethod
+      - RegisterMethod
     Properties:
       RestApiId: !Ref AccessControlApi
 
@@ -89,6 +130,14 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt AccessControlLambda.Arn
+      Action: "lambda:InvokeFunction"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AccessControlApi}/*/*/*"
+
+  RegisterLambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt RegisterEmployeeLambda.Arn
       Action: "lambda:InvokeFunction"
       Principal: "apigateway.amazonaws.com"
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AccessControlApi}/*/*/*"
@@ -111,6 +160,66 @@ Resources:
       ProvisionedThroughput:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
+
+  AccessLogsDynamoDBTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      TableName: "AccessLogs"
+      KeySchema:
+        - KeyType: "HASH"
+          AttributeName: "LogId"
+        - KeyType: "RANGE"
+          AttributeName: "Timestamp"
+      AttributeDefinitions:
+        - AttributeName: "LogId"
+          AttributeType: "S"
+        - AttributeName: "Timestamp"
+          AttributeType: "S"
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  BiometricDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: "BiometricAccessDashboard"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "BiometricAccessControl", "AccessAttempts", "Status", "Granted", { "stat": "Sum", "period": 3600 } ],
+                  [ "...", "Denied", { "stat": "Sum", "period": 3600 } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Access Attempts (Granted vs Denied)"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "BiometricAccessControl", "EmployeeRegistrations", { "stat": "Sum", "period": 86400 } ]
+                ],
+                "view": "singleValue",
+                "region": "${AWS::Region}",
+                "title": "Total Employee Registrations"
+              }
+            }
+          ]
+        }
 
   LambdaExecutionRole:
     Type: "AWS::IAM::Role"
@@ -135,6 +244,7 @@ Resources:
                   - "logs:CreateLogGroup"
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
+                  - "cloudwatch:PutMetricData"
                 Resource: "*"
               - Effect: "Allow"
                 Action:
@@ -149,7 +259,9 @@ Resources:
                 Action:
                   - "dynamodb:GetItem"
                   - "dynamodb:PutItem"
-                Resource: !GetAtt EmployeesDynamoDBTable.Arn
+                Resource:
+                  - !GetAtt EmployeesDynamoDBTable.Arn
+                  - !GetAtt AccessLogsDynamoDBTable.Arn
               - Effect: "Allow"
                 Action:
                   - "s3:GetObject"
