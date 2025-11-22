@@ -19,13 +19,13 @@ def access_control_handler(event, context):
     s3_client = boto3.client('s3')
     sns_client = boto3.client('sns')
 
-    table = dynamodb_resource.Table('employees')
-    unrecognized_faces_bucket = os.environ['UNRECOGNIZED_FACES_BUCKET']
-    sns_topic_arn = os.environ['SNS_TOPIC_ARN']
-
-    image_bytes = base64.b64decode(event['body'])
-
     try:
+        table = dynamodb_resource.Table('employees')
+        unrecognized_faces_bucket = os.environ['UNRECOGNIZED_FACES_BUCKET']
+        sns_topic_arn = os.environ['SNS_TOPIC_ARN']
+
+        image_bytes = base64.b64decode(event['body'])
+
         # Step 1: Detect and count faces in the image
         detect_response = rekognition_client.detect_faces(Image={'Bytes': image_bytes})
 
@@ -36,7 +36,16 @@ def access_control_handler(event, context):
             return {
                 'statusCode': 400,
                 'body': json.dumps({
-                    'message': "No se detectan caras"
+                    'message': "No se detect\u00f3 ninguna cara"
+                })
+            }
+
+        # Handle cases with more than 1 face
+        if num_faces > 1:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({
+                    'message': "Se detect\u00f3 m\u00e1s de una cara"
                 })
             }
 
@@ -56,11 +65,19 @@ def access_control_handler(event, context):
 
             if 'Item' in dynamodb_response:
                 employee = dynamodb_response['Item']
+
+                # Use correct field names based on registration lambda (FirstName, LastName)
+                # Fallback to legacy names if needed
+                first_name = employee.get('FirstName', employee.get('full_name', 'Unknown'))
+                last_name = employee.get('LastName', '')
+                full_name = f"{first_name} {last_name}".strip()
+                employee_id = employee.get('Cedula', employee.get('employee_id', 'N/A'))
+
                 return {
                     'statusCode': 200,
                     'body': json.dumps({
                         'status': 'Access Granted',
-                        'message': f"Welcome, {employee['full_name']} (Employee ID: {employee['employee_id']})"
+                        'message': f"Bienvenido, {full_name} (ID: {employee_id})"
                     })
                 }
 
@@ -90,7 +107,7 @@ def access_control_handler(event, context):
         print(f"SNS Alert sent to topic: {sns_topic_arn}, MessageId: {response.get('MessageId')}")
 
         return {
-            'statusCode': 401,
+            'statusCode': 403,
             'body': json.dumps({
                 'status': 'Access Denied',
                 'message': 'Face not recognized.'
@@ -99,6 +116,7 @@ def access_control_handler(event, context):
 
     except rekognition_client.exceptions.InvalidParameterException as e:
         # This can happen if the image format is invalid
+        print(f"InvalidParameterException: {str(e)}")
         return {
             'statusCode': 400,
             'body': json.dumps({
@@ -107,11 +125,11 @@ def access_control_handler(event, context):
             })
         }
     except Exception as e:
-        print(e)
+        print(f"Internal Error: {str(e)}")
         return {
             'statusCode': 500,
             'body': json.dumps({
                 'status': 'Error',
-                'message': 'Internal Server Error'
+                'message': f'Internal Server Error: {str(e)}'
             })
         }
