@@ -8,6 +8,9 @@ Parameters:
   AccessControlLambdaSourceS3KeyParameter:
     Type: String
     Description: "S3 key for the access control lambda function zip file."
+  RegisterEmployeeLambdaSourceS3KeyParameter:
+    Type: String
+    Description: "S3 key for the register employee lambda function zip file."
 
 Resources:
   UnrecognizedFacesS3Bucket:
@@ -46,6 +49,23 @@ Resources:
           SNS_TOPIC_ARN: !Ref AlertsTopic
           UNRECOGNIZED_FACES_BUCKET: !Ref UnrecognizedFacesS3Bucket
 
+  RegisterEmployeeLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "register_employee"
+      Description: "Registers a new employee face in Rekognition and DynamoDB."
+      Handler: "register_employee.register_employee"
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref S3BucketNameParameter
+        S3Key: !Ref RegisterEmployeeLambdaSourceS3KeyParameter
+      Runtime: python3.9
+      Timeout: 30
+      Environment:
+        Variables:
+          EMPLOYEES_TABLE: !Ref EmployeesDynamoDBTable
+          REKOGNITION_COLLECTION_ID: "employees"
+
   AccessControlApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
@@ -71,9 +91,30 @@ Resources:
         IntegrationHttpMethod: "POST"
         Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AccessControlLambda.Arn}/invocations"
 
+  RegisterResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref AccessControlApi
+      ParentId: !GetAtt AccessControlApi.RootResourceId
+      PathPart: "register"
+
+  RegisterMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AccessControlApi
+      ResourceId: !Ref RegisterResource
+      HttpMethod: "POST"
+      AuthorizationType: "NONE"
+      Integration:
+        Type: "AWS_PROXY"
+        IntegrationHttpMethod: "POST"
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RegisterEmployeeLambda.Arn}/invocations"
+
   ApiGatewayDeployment:
     Type: AWS::ApiGateway::Deployment
-    DependsOn: AccessMethod
+    DependsOn:
+      - AccessMethod
+      - RegisterMethod
     Properties:
       RestApiId: !Ref AccessControlApi
 
@@ -88,6 +129,14 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !GetAtt AccessControlLambda.Arn
+      Action: "lambda:InvokeFunction"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AccessControlApi}/*/*/*"
+
+  RegisterLambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt RegisterEmployeeLambda.Arn
       Action: "lambda:InvokeFunction"
       Principal: "apigateway.amazonaws.com"
       SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AccessControlApi}/*/*/*"
