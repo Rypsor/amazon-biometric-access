@@ -14,13 +14,19 @@ st.set_page_config(
     layout="centered"
 )
 
+def get_base_url(api_url):
+    """Cleans the API URL to get the base endpoint (without /access or /register)."""
+    api_url = api_url.rstrip('/')
+    if api_url.endswith('/access'):
+        return api_url[:-7]
+    if api_url.endswith('/register'):
+        return api_url[:-9]
+    return api_url
+
 def verify_access(api_url, image_bytes):
     """Sends the image to the API Gateway for verification."""
-    # Ensure URL ends with /access
-    if not api_url.endswith('/access'):
-        verify_url = f"{api_url.rstrip('/')}/access"
-    else:
-        verify_url = api_url
+    base_url = get_base_url(api_url)
+    verify_url = f"{base_url}/access"
 
     try:
         # Convert bytes to base64 string
@@ -46,11 +52,8 @@ def verify_access(api_url, image_bytes):
 
 def register_employee(api_url, image_bytes, first_name, last_name, cedula, city):
     """Sends employee data to the API Gateway for registration."""
-    # Ensure URL ends with /register
-    if not api_url.endswith('/register'):
-        register_url = f"{api_url.rstrip('/')}/register"
-    else:
-        register_url = api_url
+    base_url = get_base_url(api_url)
+    register_url = f"{base_url}/register"
 
     try:
         encoded_image = base64.b64encode(image_bytes).decode('utf-8')
