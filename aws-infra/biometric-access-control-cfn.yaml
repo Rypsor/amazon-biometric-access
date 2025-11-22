@@ -179,6 +179,48 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
+  BiometricDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: "BiometricAccessDashboard"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "BiometricAccessControl", "AccessAttempts", "Status", "Granted", { "stat": "Sum", "period": 3600 } ],
+                  [ "...", "Denied", { "stat": "Sum", "period": 3600 } ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Access Attempts (Granted vs Denied)"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "BiometricAccessControl", "EmployeeRegistrations", { "stat": "Sum", "period": 86400 } ]
+                ],
+                "view": "singleValue",
+                "region": "${AWS::Region}",
+                "title": "Total Employee Registrations"
+              }
+            }
+          ]
+        }
+
   LambdaExecutionRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -202,6 +244,7 @@ Resources:
                   - "logs:CreateLogGroup"
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
+                  - "cloudwatch:PutMetricData"
                 Resource: "*"
               - Effect: "Allow"
                 Action:

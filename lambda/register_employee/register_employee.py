@@ -8,6 +8,7 @@ import re
 # Initialize clients
 rekognition = boto3.client('rekognition')
 dynamodb = boto3.resource('dynamodb')
+cloudwatch_client = boto3.client('cloudwatch')
 
 # Environment variables
 TABLE_NAME = os.environ.get('EMPLOYEES_TABLE')
@@ -112,6 +113,18 @@ def register_employee(event, context):
 
         table.put_item(Item=item)
         print(f"Employee saved to DynamoDB: {item}")
+
+        # Publish CloudWatch Metric
+        cloudwatch_client.put_metric_data(
+            Namespace='BiometricAccessControl',
+            MetricData=[
+                {
+                    'MetricName': 'EmployeeRegistrations',
+                    'Value': 1,
+                    'Unit': 'Count'
+                },
+            ]
+        )
 
         return {
             'statusCode': 200,

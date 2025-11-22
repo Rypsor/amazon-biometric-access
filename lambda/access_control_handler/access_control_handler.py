@@ -19,6 +19,7 @@ def access_control_handler(event, context):
     dynamodb_resource = boto3.resource('dynamodb')
     s3_client = boto3.client('s3')
     sns_client = boto3.client('sns')
+    cloudwatch_client = boto3.client('cloudwatch')
 
     try:
         table = dynamodb_resource.Table('employees')
@@ -84,6 +85,24 @@ def access_control_handler(event, context):
                         'Status': 'Access Granted'
                     })
 
+                # Publish CloudWatch Metric
+                cloudwatch_client.put_metric_data(
+                    Namespace='BiometricAccessControl',
+                    MetricData=[
+                        {
+                            'MetricName': 'AccessAttempts',
+                            'Dimensions': [
+                                {
+                                    'Name': 'Status',
+                                    'Value': 'Granted'
+                                },
+                            ],
+                            'Value': 1,
+                            'Unit': 'Count'
+                        },
+                    ]
+                )
+
                 return {
                     'statusCode': 200,
                     'body': json.dumps({
@@ -127,6 +146,24 @@ def access_control_handler(event, context):
                 'EmployeeName': 'Unknown',
                 'Status': 'Access Denied'
             })
+
+        # Publish CloudWatch Metric
+        cloudwatch_client.put_metric_data(
+            Namespace='BiometricAccessControl',
+            MetricData=[
+                {
+                    'MetricName': 'AccessAttempts',
+                    'Dimensions': [
+                        {
+                            'Name': 'Status',
+                            'Value': 'Denied'
+                        },
+                    ],
+                    'Value': 1,
+                    'Unit': 'Count'
+                },
+            ]
+        )
 
         return {
             'statusCode': 403,
