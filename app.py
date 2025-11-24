@@ -6,8 +6,6 @@ import boto3
 import json
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
 
 # Configure page
 st.set_page_config(
@@ -15,6 +13,38 @@ st.set_page_config(
     page_icon="🔒",
     layout="centered"
 )
+
+# Load environment variables
+load_dotenv()
+
+# -------------------------------------------
+# Esto toma los secretos de Streamlit Cloud y se los da a Boto3
+try:
+    # Al acceder a st.secrets, Streamlit intenta leer el archivo.
+    # Si falla (FileNotFoundError), saltamos al bloque 'except'.
+    if hasattr(st, "secrets"):
+        # Mapeo de Credenciales AWS
+        if "AWS_ACCESS_KEY_ID" in st.secrets:
+            os.environ["AWS_ACCESS_KEY_ID"] = st.secrets["AWS_ACCESS_KEY_ID"]
+        if "AWS_SECRET_ACCESS_KEY" in st.secrets:
+            os.environ["AWS_SECRET_ACCESS_KEY"] = st.secrets["AWS_SECRET_ACCESS_KEY"]
+        if "AWS_DEFAULT_REGION" in st.secrets:
+            os.environ["AWS_DEFAULT_REGION"] = st.secrets["AWS_DEFAULT_REGION"]
+        
+        # Mapeo de la URL del API
+        if "API_GATEWAY_URL" in st.secrets:
+            os.environ["API_GATEWAY_URL"] = st.secrets["API_GATEWAY_URL"]
+
+except FileNotFoundError:
+    # Estamos en local y no existe .streamlit/secrets.toml
+    # Ignoramos el error porque confiamos en que load_dotenv() ya hizo el trabajo.
+    pass
+except Exception:
+    # Cualquier otro error de configuración lo ignoramos para no romper la app
+    pass
+# -------------------------------------------
+
+
 
 def get_base_url(api_url):
     """Cleans the API URL to get the base endpoint (without /access or /register)."""
