@@ -1,0 +1,27 @@
+# --- Control de versiones y entorno local ---
+.git
+.gitignore
+.env               
+venv
+.venv
+__pycache__
+
+# --- Documentación y pruebas ---
+doc
+readme-images
+verification
+README.md
+HOW_TO_RUN.md
+LICENSE.TXT
+NOTICE.txt
+
+# --- Código de Infraestructura y Backend (No necesario en el Frontend) ---
+aws-infra
+lambda              # El código de las lambdas no se usa en Streamlit
+config              # app.py usa variables de entorno, no estos jsons
+build.py            # Script de despliegue local
+build               # Carpeta de build generada por pynt
+
+# --- Archivos temporales o basura ---
+*.zip
+*.pyc
