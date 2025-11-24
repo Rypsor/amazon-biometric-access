@@ -44,7 +44,12 @@ except Exception:
     pass
 # -------------------------------------------
 
-
+# --- BLOQUE DE DIAGNÓSTICO (BORRAR DESPUÉS) ---
+if st.checkbox("Mostrar Diagnóstico de Credenciales"):
+    st.write("1. ¿Existen secrets?:", "SÍ" if hasattr(st, "secrets") else "NO")
+    st.write("2. Claves detectadas en secrets:", list(st.secrets.keys()) if hasattr(st, "secrets") else "Ninguna")
+    st.write("3. AWS Key en entorno:", os.environ.get("AWS_ACCESS_KEY_ID", "NO ESTÁ"))
+    st.write("4. AWS Region en entorno:", os.environ.get("AWS_DEFAULT_REGION", "NO ESTÁ"))
 
 def get_base_url(api_url):
     """Cleans the API URL to get the base endpoint (without /access or /register)."""
